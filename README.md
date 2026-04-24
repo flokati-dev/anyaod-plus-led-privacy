@@ -9,7 +9,7 @@ This repository contains the **privacy-relevant parts** of the Android app
 - Google Play version: `com.codecandy.blinkify`
 - Samsung Galaxy Store version: `com.codecandy.anyaod`
 
-**Full privacy policy:** https://flokati.dev/datenschutz
+**Full privacy policy:** https://flokati.dev/privacy
 
 ## What is AnyAOD+ LED?
 
