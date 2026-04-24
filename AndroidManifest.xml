@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ============================================================================
+    AndroidManifest.xml — AnyAOD+ LED
+    ============================================================================
+
+    PRIVACY OVERVIEW
+    =================
+    This manifest declares ALL permissions used by the app. Every permission
+    is documented below with its exact purpose. Nothing is hidden, nothing
+    is used for tracking, analytics, fingerprinting, or ad-targeting.
+
+    INTERNET USAGE — FULL TRANSPARENCY:
+    The app has INTERNET permission. Internet is used for exactly TWO purposes:
+      1. In-App Purchases (handled by Google Play Billing / Samsung IAP)
+      2. Weather data (ONLY when the user enables the weather feature),
+         via Open-Meteo (https://open-meteo.com).
+    No other third-party services are contacted. No analytics, no tracking.
+
+    ============================================================================
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         🌐 INTERNET & NETWORK STATE
+         ════════════════════════════════════════════════════════════════════════
+         Required for:
+           - Google Play Billing / Samsung IAP (in-app purchases)
+           - Open-Meteo weather API (only when user enables the weather feature)
+         No other network destinations are contacted.
+         ════════════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         DISPLAY & OVERLAY PERMISSIONS
+         ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Required to draw overlays above other apps (AOD, Notification dots).
+         User must explicitly grant this in System Settings. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Required to show the full-screen AOD activity over the lockscreen. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         SERVICE & LIFECYCLE PERMISSIONS
+         ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Required to keep the AOD rendering alive while the screen is off.
+         Uses the "specialUse" type with subtype "always_on_display"
+         (see <service> declaration below). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Required to wake up briefly when screen turns off to start rendering.
+         Only short wake-locks are acquired; no continuous wake-lock. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Required so Android Doze/Battery Optimization doesn't kill the
+         AOD service while the screen is off. User must explicitly grant
+         this in System Settings. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Required to post the foreground service notification (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Required to auto-start the AOD service after device reboot.
+         Otherwise the user would have to manually re-enable AOD every time. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         CONNECTION-STATUS PERMISSIONS (for AOD connection icons)
+         ════════════════════════════════════════════════════════════════════════
+         These permissions are used SOLELY to display connection-status icons
+         in the Custom AOD (e.g. "Bluetooth connected" icon, "WiFi connected"
+         icon). No device names, SSIDs, MAC addresses, or other identifying
+         data are read, stored, or transmitted.
+         ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Read Bluetooth connection status (connected/disconnected) for the
+         AOD Bluetooth icon. Android 12+ (API 31+). Device names, MAC
+         addresses, and paired-device lists are NOT read — only the
+         boolean connection state. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Legacy Bluetooth permissions for Android 11 and below (API ≤30). -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- Read WiFi connection status (connected/disconnected) for the
+         AOD WiFi icon. SSID / network name / MAC address / IP address
+         are NOT read — only the boolean connection state from
+         ConnectivityManager. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         CALENDAR PERMISSION (for AOD calendar line)
+         ════════════════════════════════════════════════════════════════════════
+         Used SOLELY to display the next upcoming event in the Custom AOD.
+         Calendar data is:
+           - Read ONLY on demand (when AOD is active)
+           - Processed ONLY locally on the device
+           - NEVER stored persistently
+           - NEVER transmitted to any server (not even Open-Meteo)
+           - NEVER shared with any third party
+         User must explicitly grant this permission at runtime.
+         ════════════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         PACKAGE VISIBILITY
+         ════════════════════════════════════════════════════════════════════════
+         Required on Android 11+ (API 30+) to list installed launcher apps
+         so the user can configure which apps should trigger notification
+         signals. Only launcher-eligible packages are enumerated.
+         ════════════════════════════════════════════════════════════════════════ -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         APPLICATION
+         ════════════════════════════════════════════════════════════════════════ -->
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Blinkify">
+
+        <!-- FileProvider for sharing preset files via standard share-sheet.
+             Not exported — only accessible via grantUriPermissions. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+
+        <!-- ────────────────────────────────────────────────────────────────────
+             RECEIVERS
+             ──────────────────────────────────────────────────────────────────── -->
+
+        <!-- Auto-start after device reboot. Not exported. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+
+        <!-- ────────────────────────────────────────────────────────────────────
+             ACTIVITIES
+             ──────────────────────────────────────────────────────────────────── -->
+
+        <!-- Preset management screen. Not exported. -->
+        <activity
+            android:name=".PresetActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+
+        <!-- Black-screen AOD activity. Not exported, excluded from recents. -->
+        <activity
+            android:name=".BlackScreenActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Blinkify"
+            android:taskAffinity="" />
+
+        <!-- Main/launcher activity. Exported (required for launcher). -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Own Custom AOD activity. Not exported, excluded from recents. -->
+        <activity
+            android:name=".OwnAodActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.Blinkify" />
+
+        <!-- Test/preview activity for AOD + notification configuration. -->
+        <activity
+            android:name=".AodTestActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
+        <!-- Lockscreen-mode activity. Not exported, excluded from recents. -->
+        <activity
+            android:name=".LockscreenActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="false" />
+
+
+        <!-- ────────────────────────────────────────────────────────────────────
+             SERVICES
+             ──────────────────────────────────────────────────────────────────── -->
+
+        <!-- Foreground service that keeps the AOD rendering alive.
+             Uses the "always_on_display" specialUse subtype as required
+             by Android 14+ for foregroundServiceType="specialUse". -->
+        <service
+            android:name=".DotForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="always_on_display" />
+        </service>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             ACCESSIBILITY SERVICE
+             ══════════════════════════════════════════════════════════════════
+             PRIVACY: Only reads event.packageName and eventType. See the
+             source file LedAccessibilityService.kt for full details.
+             NO screen content, NO text, NO passwords are read.
+             ══════════════════════════════════════════════════════════════════ -->
+        <service
+            android:name=".LedAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/a11y_service_config" />
+        </service>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             NOTIFICATION LISTENER SERVICE
+             ══════════════════════════════════════════════════════════════════
+             PRIVACY: Only reads sbn.packageName and sbn.postTime.
+             See the source file AodNotificationListener.kt for full details.
+             NO notification content, NO title, NO text, NO sender info.
+             ══════════════════════════════════════════════════════════════════ -->
+        <service
+            android:name=".AodNotificationListener"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Pure-mode foreground service (no accessibility dependency). -->
+        <service
+            android:name=".PureModeService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
+        <!-- Quick Settings tile for quick on/off toggle.
+             Exported as required by BIND_QUICK_SETTINGS_TILE contract —
+             system-only, protected by the BIND_QUICK_SETTINGS_TILE
+             signature permission. -->
+        <service
+            android:name=".PowerToggleTile"
+            android:icon="@drawable/ic_power_on_tile"
+            android:label="@string/tile_service_label"
+            android:exported="true"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>
