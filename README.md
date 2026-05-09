@@ -18,9 +18,40 @@ for Android. It shows Custom-AOD elements (clock, date, weather, calendar,
 to-do, media player, etc.) and notification signals (dots, labels, borders,
 ripples) when the screen is off or locked.
 
+## 🎉 Major Update (v1.5.2+): No Accessibility Permission Required!
+
+**As of version 1.5.2, AnyAOD+ LED no longer uses or requires Accessibility
+Service!**
+
+Previous versions used Accessibility Service for rendering notification
+overlays. The current version uses a **Foreground Service architecture**
+instead, rendering all elements within the app's own Activity.
+
+**Result:**
+- ✅ No Accessibility permission needed
+- ✅ Better privacy (one less sensitive permission)
+- ✅ Easier user onboarding
+- ✅ Same features, cleaner architecture
+
 ## Our Privacy Principles
 
-### 1. Minimal Internet Use
+### 1. Minimal Permissions
+
+The app requires **only two permissions** for core functionality:
+
+**Required:**
+- **Notification Listener** — to know which apps have notifications
+- **Foreground Service** — to display AOD while screen is off
+
+**Optional:**
+- **Internet** — ONLY if you enable the weather feature (disabled by default)
+
+**Not used:**
+- ❌ No Accessibility Service (removed in v1.5.2)
+- ❌ No location access
+- ❌ No camera, microphone, contacts, SMS, etc.
+
+### 2. Minimal Internet Use
 
 The app uses the internet for **exactly two clearly defined purposes**:
 
@@ -30,7 +61,7 @@ The app uses the internet for **exactly two clearly defined purposes**:
 All other features (AOD, notifications, clock, calendar, battery, media
 player, etc.) run **100% locally** on your device.
 
-### 2. No Tracking, No Analytics
+### 3. No Tracking, No Analytics
 
 - ❌ No notification content is logged or transmitted
 - ❌ No usage analytics (no Firebase Analytics, no Google Analytics)
@@ -39,7 +70,7 @@ player, etc.) run **100% locally** on your device.
 - ❌ No advertising IDs are read
 - ❌ No fingerprinting or profiling
 
-### 3. Open Source (Privacy-Relevant Parts)
+### 4. Open Source (Privacy-Relevant Parts)
 
 All privacy-relevant code is in this repository. Anyone can verify our
 claims file by file.
@@ -100,28 +131,20 @@ Search the entire file for `extras`, `tickerText`, `getText`, `title`, or
 `text` — you will find these names **only inside comments that explicitly
 document that they are NOT called.** No actual code accesses them.
 
-### B) Verify that the app CANNOT read screen content
+### B) Verify that NO Accessibility Service is used
 
-1. Open [`LedAccessibilityService.kt`](./LedAccessibilityService.kt)
-2. Search for `onAccessibilityEvent`
-3. You will see:
+**Previous versions (before v1.5.2)** used `LedAccessibilityService` to
+render notification overlays.
 
-**What IS read:**
-```kotlin
-val pkg = event.packageName   // ONLY the app name
-// Only events of type TYPE_WINDOW_STATE_CHANGED are processed
-```
+**Current version (v1.5.2+)** does NOT use Accessibility Service at all.
 
-**What is NEVER read:**
-```kotlin
-event.getText()              // ← NEVER called
-event.getSource()            // ← NEVER called (would give view hierarchy)
-event.contentDescription     // ← NEVER called
-```
+You can verify this:
+1. Open [`AndroidManifest.xml`](./AndroidManifest.xml)
+2. Search for `AccessibilityService` — you will find **NONE**
+3. Search for `BIND_ACCESSIBILITY_SERVICE` permission — you will find **NONE**
 
-Search the entire file for `getText`, `getSource`, or `contentDescription`
-— you will find these names **only inside comments that explicitly
-document that they are NOT called.** No actual code accesses them.
+**Result:** The app cannot read screen content, keyboard input, or any
+accessibility data because it doesn't have an Accessibility Service.
 
 ### C) Verify what the Weather Worker sends
 
@@ -130,11 +153,11 @@ document that they are NOT called.** No actual code accesses them.
    - `https://geocoding-api.open-meteo.com/v1/search?name=...`
    - `https://api.open-meteo.com/v1/forecast?...`
 3. The worker has a kill-switch at the very start:
-   ```kotlin
+```kotlin
    if (!AppPrefs.getOwnAodWeatherEnabled(ctx)) {
        return@withContext Result.success()  // no network request at all
    }
-   ```
+```
 
 No other domains, no custom headers, no cookies, no authentication.
 
@@ -147,19 +170,17 @@ network-related permissions:
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 ```
 
-Open [`build.gradle.kts`](./build.gradle.kts) — you see every dependency
-used. No Firebase, no Crashlytics, no AppsFlyer, no Facebook SDK, no
-analytics libraries of any kind. The only third-party services come from:
-- **Google Play Billing** (in the `googlePlay` flavor — handled by Google)
-- **Samsung IAP** (in the `samsung` flavor — handled by Samsung)
-- **Open-Meteo** (called explicitly by `OwnAodWeatherWorker.kt`)
+Search the repository for HTTP/HTTPS URLs — you will find only:
+- `open-meteo.com` (weather service)
+- Google/Samsung billing endpoints (handled by their SDKs)
+
+No analytics endpoints, no tracking domains, no ad networks.
 
 ## 🛡️ Security Hardening
 
-Both the accessibility service and notification listener use
-`RECEIVER_NOT_EXPORTED` — meaning only our own app can trigger internal
-broadcasts. No other app on the device can probe or manipulate these
-services.
+The notification listener uses `RECEIVER_NOT_EXPORTED` — meaning only
+our own app can trigger internal broadcasts. No other app on the device
+can probe or manipulate this service.
 
 All internal broadcasts additionally use `setPackage(packageName)` to
 ensure they stay within our own app.
@@ -167,9 +188,8 @@ ensure they stay within our own app.
 ## What this Repository Does NOT Contain
 
 This repository contains the privacy-relevant **entry points** of the app
-— the code that interacts with the Android Notification Listener API,
-the Accessibility API, and the internet. It does NOT contain the full
-app.
+— the code that interacts with the Android Notification Listener API
+and the internet. It does NOT contain the full app.
 
 Specifically, classes like `NotificationRenderEngine`, `AppPrefs`,
 `PureNotifState`, `UniversalNotifState`, and `DotForegroundService` are
@@ -208,18 +228,26 @@ purchase. Nothing else.
 ## Files in this Repository
 
 - [`AndroidManifest.xml`](./AndroidManifest.xml) — declares all permissions, each one documented inline with its purpose.
-- [`build.gradle.kts`](./build.gradle.kts) — lists every dependency the app uses.
 - [`AodNotificationListener.kt`](./AodNotificationListener.kt) — the notification listener. Proves that notification content is not read.
-- [`LedAccessibilityService.kt`](./LedAccessibilityService.kt) — the accessibility service. Proves that screen content is not read.
 - [`OwnAodWeatherWorker.kt`](./OwnAodWeatherWorker.kt) — the weather worker. Proves that only Open-Meteo is contacted.
 - [`OwnAodWeatherScheduler.kt`](./OwnAodWeatherScheduler.kt) — schedules the weather worker.
+
+### Removed Files (as of v1.5.2)
+
+The following files were present in previous versions but are **no longer
+used**:
+
+- ~~`LedAccessibilityService.kt`~~ — **Removed.** The app no longer uses
+  Accessibility Service.
+- ~~`build.gradle.kts`~~ — **Removed.** Contains internal version numbers
+  and build configurations not relevant for privacy verification.
 
 ## Why We Publish This
 
 Many Android apps make privacy claims that can't be verified. Because
-AnyAOD+ LED requires sensitive permissions (Notification Listener and
-Accessibility Service), we want our users to be able to confirm our
-claims themselves — line by line, file by file.
+AnyAOD+ LED requires a sensitive permission (Notification Listener),
+we want our users to be able to confirm our claims themselves — line by
+line, file by file.
 
 If you find anything in this code that contradicts our privacy promises,
 please open an issue. We want to know.
